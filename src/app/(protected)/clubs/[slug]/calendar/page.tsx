@@ -4,7 +4,7 @@ import { getSession } from "@/server/better-auth/server";
 
 export default async function Page({ params }: { params: { slug: string } }) {
   const session = await getSession();
-  const { slug } = await params;
+  const { slug } = params;
   const club = await api.club.getBySlug({ slug });
   const facilityTypes = await api.facility.getTypes({ clubId: club.id });
 

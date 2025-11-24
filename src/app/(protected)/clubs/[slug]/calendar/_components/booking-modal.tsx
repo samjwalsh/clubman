@@ -55,10 +55,10 @@ export default function BookingModal({
   initialParticipants,
 }: BookingModalProps) {
   const [duration, setDuration] = useState(
-    initialDuration || facilityType.bookingIntervalMinutes || 60,
+    initialDuration ?? (facilityType.bookingIntervalMinutes || 60),
   );
   const [participants, setParticipants] = useState<Participant[]>(
-    initialParticipants || [],
+    initialParticipants ?? [],
   );
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
