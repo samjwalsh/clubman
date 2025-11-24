@@ -4,7 +4,16 @@
  */
 import "./src/env.js";
 
+import withPWAInit from "next-pwa";
+
+const withPWA = withPWAInit({
+    dest: "public",
+    register: true,
+    skipWaiting: true,
+});
+
 /** @type {import("next").NextConfig} */
 const config = {};
 
-export default config;
+// @ts-ignore
+export default withPWA(config);

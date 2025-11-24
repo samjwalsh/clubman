@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { facility, facilityType, membership } from "@/server/db/schema";
+import {
+    facility,
+    facilityType,
+    membership,
+    facilityOpeningHours,
+    bookingRule,
+} from "@/server/db/schema";
 import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -13,6 +19,8 @@ export const facilityRouter = createTRPCRouter({
                 where: eq(facilityType.clubId, input.clubId),
                 with: {
                     facilities: true,
+                    openingHours: true,
+                    rules: true,
                 },
             });
         }),
@@ -22,7 +30,6 @@ export const facilityRouter = createTRPCRouter({
             z.object({
                 clubId: z.string(),
                 name: z.string().min(1),
-                bookingIntervalMinutes: z.number().min(15).default(30),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -50,7 +57,6 @@ export const facilityRouter = createTRPCRouter({
                     id: randomUUID(),
                     clubId: input.clubId,
                     name: input.name,
-                    bookingIntervalMinutes: input.bookingIntervalMinutes,
                 })
                 .returning();
         }),
@@ -97,6 +103,7 @@ export const facilityRouter = createTRPCRouter({
                 clubId: z.string(),
                 facilityTypeId: z.string(),
                 name: z.string().min(1),
+                capacity: z.number().min(1).default(1),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -125,6 +132,7 @@ export const facilityRouter = createTRPCRouter({
                     clubId: input.clubId,
                     facilityTypeId: input.facilityTypeId,
                     name: input.name,
+                    capacity: input.capacity,
                 })
                 .returning();
         }),
@@ -170,7 +178,6 @@ export const facilityRouter = createTRPCRouter({
             z.object({
                 id: z.string(),
                 name: z.string().min(1).optional(),
-                bookingIntervalMinutes: z.number().min(15).optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -207,7 +214,6 @@ export const facilityRouter = createTRPCRouter({
                 .update(facilityType)
                 .set({
                     name: input.name,
-                    bookingIntervalMinutes: input.bookingIntervalMinutes,
                 })
                 .where(eq(facilityType.id, input.id))
                 .returning();
@@ -217,7 +223,8 @@ export const facilityRouter = createTRPCRouter({
         .input(
             z.object({
                 id: z.string(),
-                name: z.string().min(1),
+                name: z.string().min(1).optional(),
+                capacity: z.number().min(1).optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -254,8 +261,154 @@ export const facilityRouter = createTRPCRouter({
                 .update(facility)
                 .set({
                     name: input.name,
+                    capacity: input.capacity,
                 })
                 .where(eq(facility.id, input.id))
                 .returning();
+        }),
+
+    updateOpeningHours: protectedProcedure
+        .input(
+            z.object({
+                facilityTypeId: z.string(),
+                hours: z.array(
+                    z.object({
+                        dayOfWeek: z.enum([
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                            "sunday",
+                        ]),
+                        startTime: z.string(),
+                        endTime: z.string(),
+                    })
+                ),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const type = await ctx.db.query.facilityType.findFirst({
+                where: eq(facilityType.id, input.facilityTypeId),
+            });
+
+            if (!type) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Facility type not found",
+                });
+            }
+
+            const userMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, type.clubId),
+                    eq(membership.userId, ctx.session.user.id)
+                ),
+            });
+
+            if (
+                !userMembership ||
+                !["owner", "admin"].includes(userMembership.role)
+            ) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message:
+                        "You do not have permission to manage facilities for this club",
+                });
+            }
+
+            // Delete existing hours
+            await ctx.db
+                .delete(facilityOpeningHours)
+                .where(eq(facilityOpeningHours.facilityTypeId, input.facilityTypeId));
+
+            // Insert new hours
+            if (input.hours.length > 0) {
+                await ctx.db.insert(facilityOpeningHours).values(
+                    input.hours.map((h) => ({
+                        id: randomUUID(),
+                        facilityTypeId: input.facilityTypeId,
+                        dayOfWeek: h.dayOfWeek,
+                        startTime: h.startTime,
+                        endTime: h.endTime,
+                    }))
+                );
+            }
+
+            return { success: true };
+        }),
+
+    updateBookingRules: protectedProcedure
+        .input(
+            z.object({
+                facilityTypeId: z.string(),
+                bookingIntervalMinutes: z.number().min(15).optional(),
+                rules: z.array(
+                    z.object({
+                        type: z.enum(["max_duration", "cancellation_window", "guest_fee"]),
+                        value: z.any(),
+                    })
+                ),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const type = await ctx.db.query.facilityType.findFirst({
+                where: eq(facilityType.id, input.facilityTypeId),
+            });
+
+            if (!type) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Facility type not found",
+                });
+            }
+
+            const userMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, type.clubId),
+                    eq(membership.userId, ctx.session.user.id)
+                ),
+            });
+
+            if (
+                !userMembership ||
+                !["owner", "admin"].includes(userMembership.role)
+            ) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message:
+                        "You do not have permission to manage facilities for this club",
+                });
+            }
+
+            // Update booking interval if provided
+            if (input.bookingIntervalMinutes) {
+                await ctx.db
+                    .update(facilityType)
+                    .set({ bookingIntervalMinutes: input.bookingIntervalMinutes })
+                    .where(eq(facilityType.id, input.facilityTypeId));
+            }
+
+            // Delete existing rules
+            await ctx.db
+                .delete(bookingRule)
+                .where(eq(bookingRule.facilityTypeId, input.facilityTypeId));
+
+            // Insert new rules
+            if (input.rules.length > 0) {
+                await ctx.db.insert(bookingRule).values(
+                    input.rules.map((r) => ({
+                        id: randomUUID(),
+                        clubId: type.clubId,
+                        facilityTypeId: input.facilityTypeId,
+                        type: r.type,
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        value: r.value,
+                    }))
+                );
+            }
+
+            return { success: true };
         }),
 });

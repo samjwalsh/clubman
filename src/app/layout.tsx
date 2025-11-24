@@ -1,14 +1,23 @@
 import "@/styles/globals.css";
 
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import { Geist } from "next/font/google";
 
 import { TRPCReactProvider } from "@/trpc/react";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Clubman",
-  description: "Sports facility manager",
+  description: "Manage your club with ease.",
+  manifest: "/manifest.json", // Link the manifest here
   icons: [{ rel: "icon", url: "/favicon.ico" }],
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a1128", // Must match manifest theme_color
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 const geist = Geist({
@@ -21,8 +30,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable}`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster />
       </body>
     </html>
   );
