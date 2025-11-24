@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 
 const PageButton = ({

@@ -1,12 +1,20 @@
-import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/server/better-auth";
 import { getSession } from "@/server/better-auth/server";
-import { api, HydrateClient } from "@/trpc/server";
+import { api } from "@/trpc/server";
 
 export default async function Home() {
   const session = await getSession();
-  return <div>hi</div>;
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const clubs = await api.club.getAll();
+
+  if (clubs.length > 0) {
+    redirect(`/clubs/${clubs[0]?.slug}/dashboard`);
+  }
+
+  return <div>You are not a member of any club.</div>;
 }

@@ -1,19 +1,14 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/server/better-auth/server";
 
-import { headers } from "next/headers";
-import Link from "next/link";
-import { auth } from "@/server/better-auth";
-import { api, HydrateClient } from "@/trpc/server";
+import { HydrateClient, api } from "@/trpc/server";
 
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { AppSidebar } from "@/app/(protected)/clubs/_components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -32,11 +27,14 @@ export default async function ProtectedLayout({
   if (!session) {
     redirect("/login");
   }
+
+  const clubs = await api.club.getAll();
+
   return (
     <HydrateClient>
       <main className="">
         <SidebarProvider>
-          <AppSidebar />
+          <AppSidebar clubs={clubs} />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
               <div className="flex items-center gap-2 px-4">
@@ -47,12 +45,8 @@ export default async function ProtectedLayout({
                 />
                 <Breadcrumb>
                   <BreadcrumbList>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="#">Not sure what</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      <BreadcrumbPage>This should say</BreadcrumbPage>
+                      <BreadcrumbPage>What should go here?</BreadcrumbPage>
                     </BreadcrumbItem>
                   </BreadcrumbList>
                 </Breadcrumb>
@@ -64,5 +58,4 @@ export default async function ProtectedLayout({
       </main>
     </HydrateClient>
   );
-  return <>{children}</>;
 }

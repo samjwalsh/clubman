@@ -2,12 +2,13 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   pgTable,
-  pgTableCreator,
   text,
   timestamp,
+  pgEnum,
+  integer,
+  jsonb,
+  decimal,
 } from "drizzle-orm/pg-core";
-
-export const createTable = pgTableCreator((name) => `pg-drizzle_${name}`);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -23,6 +24,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
+  admin: boolean().default(false)
 });
 
 export const session = pgTable("session", {
@@ -81,3 +83,282 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, { fields: [session.userId], references: [user.id] }),
 }));
+
+// Enums
+export const roleEnum = pgEnum("role", ["owner", "admin", "coach", "member"]);
+export const membershipStatusEnum = pgEnum("membership_status", [
+  "active",
+  "suspended",
+  "pending",
+]);
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "booked",
+  "attended",
+  "cancelled",
+  "no_show",
+]);
+export const bookingTypeEnum = pgEnum("booking_type", [
+  "user_booking",
+  "coaching_session",
+  "maintenance",
+  "block",
+]);
+export const ruleTypeEnum = pgEnum("rule_type", [
+  "opening_hours",
+  "max_duration",
+  "cancellation_window",
+  "guest_fee",
+]);
+export const participantStatusEnum = pgEnum("participant_status", [
+  "registered",
+  "waitlist",
+  "cancelled",
+]);
+
+// Tables
+
+export const club = pgTable("club", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  logoUrl: text("logo_url"),
+  settings: jsonb("settings"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const membership = pgTable("membership", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  role: roleEnum("role").notNull(),
+  status: membershipStatusEnum("status").notNull().default("active"),
+  joinedAt: timestamp("joined_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const facilityType = pgTable("facility_type", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  bookingIntervalMinutes: integer("booking_interval_minutes")
+    .default(30)
+    .notNull(),
+});
+
+export const facility = pgTable("facility", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  facilityTypeId: text("facility_type_id")
+    .notNull()
+    .references(() => facilityType.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  metadata: jsonb("metadata"),
+});
+
+export const booking = pgTable("booking", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  facilityId: text("facility_id")
+    .notNull()
+    .references(() => facility.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  status: bookingStatusEnum("status").notNull(),
+  type: bookingTypeEnum("type").notNull(),
+  guestInfo: jsonb("guest_info"),
+  checkInAt: timestamp("check_in_at"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const bookingRule = pgTable("booking_rule", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  facilityTypeId: text("facility_type_id").references(() => facilityType.id, {
+    onDelete: "cascade",
+  }),
+  type: ruleTypeEnum("type").notNull(),
+  value: jsonb("value").notNull(),
+});
+
+export const waitlist = pgTable("waitlist", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  facilityId: text("facility_id")
+    .notNull()
+    .references(() => facility.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const coachingTemplate = pgTable("coaching_template", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  defaultDurationMinutes: integer("default_duration_minutes").notNull(),
+  defaultCapacity: integer("default_capacity").notNull(),
+  defaultPrice: decimal("default_price").notNull(),
+});
+
+export const coachingSession = pgTable("coaching_session", {
+  id: text("id").primaryKey(),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  templateId: text("template_id")
+    .notNull()
+    .references(() => coachingTemplate.id, { onDelete: "cascade" }),
+  coachId: text("coach_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  capacity: integer("capacity").notNull(),
+  price: decimal("price").notNull(),
+});
+
+export const sessionParticipant = pgTable("session_participant", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => coachingSession.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: participantStatusEnum("status").notNull(),
+  checkInAt: timestamp("check_in_at"),
+  joinedAt: timestamp("joined_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+// Relations
+
+export const clubRelations = relations(club, ({ many }) => ({
+  memberships: many(membership),
+  facilities: many(facility),
+  facilityTypes: many(facilityType),
+  bookings: many(booking),
+  bookingRules: many(bookingRule),
+  coachingTemplates: many(coachingTemplate),
+  coachingSessions: many(coachingSession),
+}));
+
+export const membershipRelations = relations(membership, ({ one }) => ({
+  user: one(user, { fields: [membership.userId], references: [user.id] }),
+  club: one(club, { fields: [membership.clubId], references: [club.id] }),
+}));
+
+export const facilityTypeRelations = relations(facilityType, ({ one, many }) => ({
+  club: one(club, { fields: [facilityType.clubId], references: [club.id] }),
+  facilities: many(facility),
+  rules: many(bookingRule),
+}));
+
+export const facilityRelations = relations(facility, ({ one, many }) => ({
+  club: one(club, { fields: [facility.clubId], references: [club.id] }),
+  type: one(facilityType, {
+    fields: [facility.facilityTypeId],
+    references: [facilityType.id],
+  }),
+  bookings: many(booking),
+  waitlist: many(waitlist),
+}));
+
+export const bookingRelations = relations(booking, ({ one }) => ({
+  club: one(club, { fields: [booking.clubId], references: [club.id] }),
+  facility: one(facility, {
+    fields: [booking.facilityId],
+    references: [facility.id],
+  }),
+  user: one(user, { fields: [booking.userId], references: [user.id] }),
+}));
+
+export const bookingRuleRelations = relations(bookingRule, ({ one }) => ({
+  club: one(club, { fields: [bookingRule.clubId], references: [club.id] }),
+  facilityType: one(facilityType, {
+    fields: [bookingRule.facilityTypeId],
+    references: [facilityType.id],
+  }),
+}));
+
+export const waitlistRelations = relations(waitlist, ({ one }) => ({
+  club: one(club, { fields: [waitlist.clubId], references: [club.id] }),
+  facility: one(facility, {
+    fields: [waitlist.facilityId],
+    references: [facility.id],
+  }),
+  user: one(user, { fields: [waitlist.userId], references: [user.id] }),
+}));
+
+export const coachingTemplateRelations = relations(
+  coachingTemplate,
+  ({ one, many }) => ({
+    club: one(club, { fields: [coachingTemplate.clubId], references: [club.id] }),
+    sessions: many(coachingSession),
+  }),
+);
+
+export const coachingSessionRelations = relations(
+  coachingSession,
+  ({ one, many }) => ({
+    club: one(club, { fields: [coachingSession.clubId], references: [club.id] }),
+    template: one(coachingTemplate, {
+      fields: [coachingSession.templateId],
+      references: [coachingTemplate.id],
+    }),
+    coach: one(user, { fields: [coachingSession.coachId], references: [user.id] }),
+    participants: many(sessionParticipant),
+  }),
+);
+
+export const sessionParticipantRelations = relations(
+  sessionParticipant,
+  ({ one }) => ({
+    session: one(coachingSession, {
+      fields: [sessionParticipant.sessionId],
+      references: [coachingSession.id],
+    }),
+    user: one(user, {
+      fields: [sessionParticipant.userId],
+      references: [user.id],
+    }),
+  }),
+);
