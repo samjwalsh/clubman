@@ -21,6 +21,7 @@ export const facilityRouter = createTRPCRouter({
                     facilities: true,
                     openingHours: true,
                     rules: true,
+                    closures: true,
                 },
             });
         }),

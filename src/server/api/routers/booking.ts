@@ -3,13 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import {
     booking,
+    bookingParticipant,
     bookingRule,
     facility,
     facilityClosure,
     facilityOpeningHours,
     membership,
 } from "@/server/db/schema";
-import { and, eq, gte, lte, or, lt, gt } from "drizzle-orm";
+import { and, eq, gte, lte, or, lt, gt, inArray } from "drizzle-orm";
 
 const daysOfWeek = [
     "sunday",
@@ -22,6 +23,30 @@ const daysOfWeek = [
 ] as const;
 
 export const bookingRouter = createTRPCRouter({
+    getByDateRange: protectedProcedure
+        .input(z.object({
+            clubId: z.string(),
+            startTime: z.date(),
+            endTime: z.date(),
+            facilityIds: z.array(z.string()).optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const { db } = ctx;
+            const { clubId, startTime, endTime, facilityIds } = input;
+
+            return db.query.booking.findMany({
+                where: and(
+                    eq(booking.clubId, clubId),
+                    lt(booking.startTime, endTime),
+                    gt(booking.endTime, startTime),
+                    facilityIds && facilityIds.length > 0 ? inArray(booking.facilityId, facilityIds) : undefined
+                ),
+                with: {
+                    user: true,
+                }
+            });
+        }),
+
     create: protectedProcedure
         .input(
             z.object({
@@ -30,11 +55,17 @@ export const bookingRouter = createTRPCRouter({
                 startTime: z.date(),
                 endTime: z.date(),
                 type: z.enum(["user_booking", "coaching_session", "maintenance", "block"]).default("user_booking"),
+                participants: z.array(z.object({
+                    name: z.string().optional(),
+                    email: z.string().optional(),
+                    userId: z.string().optional(),
+                    isGuest: z.boolean().default(false),
+                })).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
             const { db, session } = ctx;
-            const { clubId, facilityId, startTime, endTime, type } = input;
+            const { clubId, facilityId, startTime, endTime, type, participants } = input;
 
             // 0. Check membership
             const userMembership = await db.query.membership.findFirst({
@@ -183,14 +214,24 @@ export const bookingRouter = createTRPCRouter({
 
             if (rules.length > 0 && rules[0]) {
                 const rule = rules[0];
-                const maxMinutes = (rule.value as { minutes: number }).minutes;
-                const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+                const val = rule.value;
+                let maxMinutes = 0;
 
-                if (durationMinutes > maxMinutes) {
-                    throw new TRPCError({
-                        code: "BAD_REQUEST",
-                        message: `Booking exceeds maximum duration of ${maxMinutes} minutes`,
-                    });
+                if (typeof val === 'number') {
+                    maxMinutes = val;
+                } else if (typeof val === 'object' && val !== null && 'minutes' in val) {
+                    maxMinutes = Number((val as { minutes: unknown }).minutes);
+                }
+
+                if (maxMinutes > 0) {
+                    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+
+                    if (durationMinutes > maxMinutes) {
+                        throw new TRPCError({
+                            code: "BAD_REQUEST",
+                            message: `Booking exceeds maximum duration of ${maxMinutes} minutes`,
+                        });
+                    }
                 }
             }
 
@@ -222,6 +263,18 @@ export const bookingRouter = createTRPCRouter({
                 status: "booked",
                 type,
             }).returning();
+
+            if (newBooking && participants && participants.length > 0) {
+                await db.insert(bookingParticipant).values(
+                    participants.map((p) => ({
+                        bookingId: newBooking.id,
+                        userId: p.userId,
+                        guestName: p.name,
+                        guestEmail: p.email,
+                        isGuest: p.isGuest,
+                    }))
+                );
+            }
 
             return newBooking;
         }),
@@ -262,7 +315,15 @@ export const bookingRouter = createTRPCRouter({
 
             if (rules.length > 0 && rules[0]) {
                 const rule = rules[0];
-                const hours = (rule.value as { hours: number }).hours;
+                const val = rule.value;
+                let hours = 0;
+
+                if (typeof val === 'number') {
+                    hours = val;
+                } else if (typeof val === 'object' && val !== null && 'hours' in val) {
+                    hours = Number((val as { hours: unknown }).hours);
+                }
+
                 const now = new Date();
                 const diffHours = (existingBooking.startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 

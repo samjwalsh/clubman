@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -65,7 +64,7 @@ export function OpeningHoursEditor({ type }: { type: FacilityType }) {
   const updateDay = (
     day: string,
     field: "isOpen" | "start" | "end",
-    value: string | boolean
+    value: string | boolean,
   ) => {
     setHours((prev) => ({
       ...prev,

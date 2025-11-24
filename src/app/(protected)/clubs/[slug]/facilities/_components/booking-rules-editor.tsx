@@ -24,13 +24,23 @@ export function BookingRulesEditor({ type }: { type: FacilityType }) {
     const guestFeeRule = type.rules.find((r) => r.type === "guest_fee");
 
     setBookingInterval(type.bookingIntervalMinutes.toString());
-    setMaxDuration(
-      maxDurationRule ? (maxDurationRule.value as number).toString() : "",
-    );
-    setCancellationWindow(
-      cancellationRule ? (cancellationRule.value as number).toString() : "",
-    );
-    setGuestFee(guestFeeRule ? (guestFeeRule.value as number).toString() : "");
+
+    // Handle both number and object formats
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getMaxVal = (r: any) => {
+      if (!r) return "";
+      if (typeof r.value === "number") return r.value.toString();
+      return (
+        r.value?.minutes?.toString() ||
+        r.value?.hours?.toString() ||
+        r.value?.amount?.toString() ||
+        ""
+      );
+    };
+
+    setMaxDuration(getMaxVal(maxDurationRule));
+    setCancellationWindow(getMaxVal(cancellationRule));
+    setGuestFee(getMaxVal(guestFeeRule));
   }, [type.rules, type.bookingIntervalMinutes]);
 
   const updateRules = api.facility.updateBookingRules.useMutation({
@@ -49,19 +59,19 @@ export function BookingRulesEditor({ type }: { type: FacilityType }) {
     if (maxDuration) {
       rules.push({
         type: "max_duration" as const,
-        value: parseInt(maxDuration),
+        value: { minutes: parseInt(maxDuration) },
       });
     }
     if (cancellationWindow) {
       rules.push({
         type: "cancellation_window" as const,
-        value: parseInt(cancellationWindow),
+        value: { hours: parseInt(cancellationWindow) },
       });
     }
     if (guestFee) {
       rules.push({
         type: "guest_fee" as const,
-        value: parseFloat(guestFee),
+        value: { amount: parseFloat(guestFee) },
       });
     }
 

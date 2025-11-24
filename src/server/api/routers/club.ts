@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { club, membership, user } from "@/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export const clubRouter = createTRPCRouter({
@@ -79,5 +79,43 @@ export const clubRouter = createTRPCRouter({
             }
 
             return clubData;
+        }),
+
+    searchMembers: protectedProcedure
+        .input(z.object({
+            clubId: z.string(),
+            query: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const { clubId, query } = input;
+
+            // Find memberships for this club where user name or email matches query
+            const members = await ctx.db.query.membership.findMany({
+                where: and(
+                    eq(membership.clubId, clubId),
+                    eq(membership.status, "active")
+                ),
+                with: {
+                    user: true
+                }
+            });
+
+            // Filter in memory or use a more complex join if needed. 
+            // Since we are using query builder with relations, filtering on relation fields is tricky without raw sql or joins.
+            // For now, let's filter in memory as member lists per club shouldn't be huge yet.
+            // Ideally we should use a join here.
+
+            const filtered = members.filter(m =>
+                m.user.name.toLowerCase().includes(query.toLowerCase()) ||
+                m.user.email.toLowerCase().includes(query.toLowerCase())
+            );
+
+            return filtered.map(m => ({
+                userId: m.userId,
+                name: m.user.name,
+                email: m.user.email,
+                image: m.user.image,
+                role: m.role
+            }));
         }),
 });
