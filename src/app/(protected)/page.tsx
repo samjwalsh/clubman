@@ -8,11 +8,5 @@ import { api, HydrateClient } from "@/trpc/server";
 
 export default async function Home() {
   const session = await getSession();
-  return (
-    <HydrateClient>
-      <main className="">
-        <div>hi</div>
-      </main>
-    </HydrateClient>
-  );
+  return <div>hi</div>;
 }

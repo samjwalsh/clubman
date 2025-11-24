@@ -21,10 +21,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { GalleryVerticalEnd } from "lucide-react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,9 +35,17 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    await authClient.signIn.email({
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    await authClient.signUp.email({
       email,
       password,
+      name,
+      callbackURL: "/",
       fetchOptions: {
         onError: (ctx) => {
           setError(ctx.error.message);
@@ -61,14 +71,25 @@ export default function LoginPage() {
         <div className={cn("flex flex-col gap-6")}>
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Welcome back</CardTitle>
+              <CardTitle className="text-xl">Create your account</CardTitle>
               <CardDescription>
-                Login with your email and password.
+                Enter your email below to create your account
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit}>
                 <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="John Doe"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </Field>
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
@@ -81,30 +102,41 @@ export default function LoginPage() {
                     />
                   </Field>
                   <Field>
-                    <div className="flex items-center">
-                      <FieldLabel htmlFor="password">Password</FieldLabel>
-                      <a
-                        href="#"
-                        className="ml-auto text-sm underline-offset-4 hover:underline"
-                      >
-                        Forgot your password?
-                      </a>
-                    </div>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <Field className="grid grid-cols-2 gap-4">
+                      <Field>
+                        <FieldLabel htmlFor="password">Password</FieldLabel>
+                        <Input
+                          id="password"
+                          type="password"
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="confirm-password">
+                          Confirm Password
+                        </FieldLabel>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </Field>
+                    </Field>
+                    <FieldDescription>
+                      Must be at least 8 characters long.
+                    </FieldDescription>
                   </Field>
                   {error && <p className="text-sm text-red-500">{error}</p>}
                   <Field>
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Logging in..." : "Login"}
+                      {loading ? "Creating Account..." : "Create Account"}
                     </Button>
                     <FieldDescription className="text-center">
-                      Don&apos;t have an account? <a href="/signup">Sign up</a>
+                      Already have an account? <a href="/login">Sign in</a>
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
