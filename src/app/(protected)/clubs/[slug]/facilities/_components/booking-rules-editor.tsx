@@ -26,16 +26,16 @@ export function BookingRulesEditor({ type }: { type: FacilityType }) {
     setBookingInterval(type.bookingIntervalMinutes.toString());
 
     // Handle both number and object formats
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const getMaxVal = (r: any) => {
+    const getMaxVal = (r: typeof maxDurationRule) => {
       if (!r) return "";
-      if (typeof r.value === "number") return r.value.toString();
-      return (
-        r.value?.minutes?.toString() ||
-        r.value?.hours?.toString() ||
-        r.value?.amount?.toString() ||
-        ""
-      );
+      const val = r.value;
+      if (typeof val === "number") return val.toString();
+      if (typeof val === "object" && val !== null) {
+        if ("minutes" in val) return String(val.minutes);
+        if ("hours" in val) return String(val.hours);
+        if ("amount" in val) return String(val.amount);
+      }
+      return "";
     };
 
     setMaxDuration(getMaxVal(maxDurationRule));
