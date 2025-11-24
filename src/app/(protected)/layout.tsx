@@ -52,7 +52,7 @@ export default async function ProtectedLayout({
                 </Breadcrumb>
               </div>
             </header>
-            <div className="p-4 pt-0">{children}</div>
+            <div>{children}</div>
           </SidebarInset>
         </SidebarProvider>
       </main>

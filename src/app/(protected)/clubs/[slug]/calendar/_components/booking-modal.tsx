@@ -29,6 +29,9 @@ interface BookingModalProps {
   startTime: Date;
   currentUserId: string;
   onSuccess: () => void;
+  bookingId?: string;
+  initialDuration?: number;
+  initialParticipants?: Participant[];
 }
 
 interface Participant {
@@ -47,11 +50,16 @@ export default function BookingModal({
   startTime,
   currentUserId,
   onSuccess,
+  bookingId,
+  initialDuration,
+  initialParticipants,
 }: BookingModalProps) {
   const [duration, setDuration] = useState(
-    facilityType.bookingIntervalMinutes || 60,
+    initialDuration || facilityType.bookingIntervalMinutes || 60,
   );
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>(
+    initialParticipants || [],
+  );
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
@@ -61,6 +69,34 @@ export default function BookingModal({
   const createBooking = api.booking.create.useMutation({
     onSuccess: () => {
       toast.success("Booking created successfully");
+      utils.booking.getByDateRange.invalidate().catch(() => {
+        return;
+      });
+      onSuccess();
+      onClose();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateBooking = api.booking.update.useMutation({
+    onSuccess: () => {
+      toast.success("Booking updated successfully");
+      utils.booking.getByDateRange.invalidate().catch(() => {
+        return;
+      });
+      onSuccess();
+      onClose();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const cancelBooking = api.booking.cancel.useMutation({
+    onSuccess: () => {
+      toast.success("Booking cancelled successfully");
       utils.booking.getByDateRange.invalidate().catch(() => {
         return;
       });
@@ -87,13 +123,13 @@ export default function BookingModal({
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setDuration(facilityType.bookingIntervalMinutes || 60);
-      setParticipants([]);
+      setDuration(initialDuration ?? facilityType.bookingIntervalMinutes ?? 60);
+      setParticipants(initialParticipants ?? []);
       setGuestName("");
       setGuestEmail("");
       setMemberSearchQuery("");
     }
-  }, [isOpen, facilityType]);
+  }, [isOpen, facilityType, initialDuration, initialParticipants]);
 
   const handleAddGuest = () => {
     if (!guestName) return;
@@ -128,13 +164,22 @@ export default function BookingModal({
   };
 
   const handleSubmit = () => {
-    createBooking.mutate({
-      clubId,
-      facilityId: facility.id,
-      startTime,
-      endTime,
-      participants,
-    });
+    if (bookingId) {
+      updateBooking.mutate({
+        bookingId,
+        startTime,
+        endTime,
+        participants,
+      });
+    } else {
+      createBooking.mutate({
+        clubId,
+        facilityId: facility.id,
+        startTime,
+        endTime,
+        participants,
+      });
+    }
   };
 
   const maxDurationRule = facilityType.rules.find(
@@ -191,7 +236,9 @@ export default function BookingModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>New Booking</DialogTitle>
+          <DialogTitle>
+            {bookingId ? "Edit Booking" : "New Booking"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
@@ -361,16 +408,35 @@ export default function BookingModal({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={createBooking.isPending}>
-            {createBooking.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Confirm Booking
-          </Button>
+        <DialogFooter className="flex justify-between sm:justify-between">
+          {bookingId ? (
+            <Button
+              variant="destructive"
+              onClick={() => cancelBooking.mutate({ bookingId })}
+              disabled={cancelBooking.isPending}
+            >
+              {cancelBooking.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Cancel Booking
+            </Button>
+          ) : (
+            <div />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={createBooking.isPending || updateBooking.isPending}
+            >
+              {(createBooking.isPending || updateBooking.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {bookingId ? "Update Booking" : "Confirm Booking"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

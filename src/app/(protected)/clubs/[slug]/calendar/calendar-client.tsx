@@ -56,6 +56,14 @@ export default function CalendarClient({
   const [bookingModalData, setBookingModalData] = useState<{
     facility: Facility;
     startTime: Date;
+    bookingId?: string;
+    initialDuration?: number;
+    initialParticipants?: {
+      name?: string;
+      email?: string;
+      userId?: string;
+      isGuest: boolean;
+    }[];
   } | null>(null);
 
   const selectedType = facilityTypes.find((t) => t.id === selectedTypeId);
@@ -77,16 +85,42 @@ export default function CalendarClient({
   const handlePreviousWeek = () => setSelectedDate((d) => subWeeks(d, 1));
   const handleNextWeek = () => setSelectedDate((d) => addWeeks(d, 1));
 
-  const handleSlotClick = (facility: Facility, startTime: Date) => {
+  const handleSlotClick = (
+    facility: Facility,
+    startTime: Date,
+    booking?: NonNullable<typeof bookings>[number],
+  ) => {
     if (isFacilityClosed(facility.id, startTime)) return;
 
-    // Check if date is in the past
-    if (startTime < new Date()) {
-      // Optional: Allow admins to book in past? For now, just return.
-      // return;
-    }
+    if (booking) {
+      if (booking.userId !== userId) return;
 
-    setBookingModalData({ facility, startTime });
+      const duration =
+        (new Date(booking.endTime).getTime() -
+          new Date(booking.startTime).getTime()) /
+        60000;
+
+      setBookingModalData({
+        facility,
+        startTime: new Date(booking.startTime),
+        bookingId: booking.id,
+        initialDuration: duration,
+        initialParticipants: booking.participants.map((p) => ({
+          name: p.guestName ?? undefined,
+          email: p.guestEmail ?? undefined,
+          userId: p.userId ?? undefined,
+          isGuest: p.isGuest ?? false,
+        })),
+      });
+    } else {
+      // Check if date is in the past
+      if (startTime < new Date()) {
+        // Optional: Allow admins to book in past? For now, just return.
+        // return;
+      }
+
+      setBookingModalData({ facility, startTime });
+    }
     setIsBookingModalOpen(true);
   };
 
@@ -148,7 +182,7 @@ export default function CalendarClient({
     currentTime = new Date(currentTime.getTime() + interval * 60000);
   }
 
-  const ROW_HEIGHT = 80; // px
+  const ROW_HEIGHT = 60; // px
   const pixelsPerMinute = ROW_HEIGHT / interval;
 
   return (
@@ -239,7 +273,7 @@ export default function CalendarClient({
               {timeSlots.map((slot) => (
                 <div
                   key={slot.toISOString()}
-                  className="text-muted-foreground flex items-start justify-end border-r border-b p-2 pt-2 text-right text-xs"
+                  className="text-foreground flex items-start justify-end border-r border-b p-2 pt-2 text-right text-sm"
                   style={{ height: ROW_HEIGHT }}
                 >
                   {format(slot, "HH:mm")}
@@ -258,7 +292,7 @@ export default function CalendarClient({
                   {timeSlots.map((slot) => (
                     <div
                       key={slot.toISOString()}
-                      className="hover:bg-accent/50 w-full cursor-pointer border-b transition-colors"
+                      className="hover:bg-accent w-full cursor-pointer border-b transition-colors"
                       style={{ height: ROW_HEIGHT }}
                       onClick={() => handleSlotClick(facility, slot)}
                     />
@@ -290,7 +324,7 @@ export default function CalendarClient({
                         <div
                           key={booking.id}
                           className={cn(
-                            "absolute right-1 left-1 overflow-hidden rounded-md border p-2 text-xs shadow-sm transition-all hover:z-10",
+                            "absolute right-1 left-1 flex flex-wrap content-start gap-2 overflow-hidden rounded-md border p-2 text-xs shadow-sm transition-all hover:z-10",
                             booking.status === "booked" &&
                               "bg-primary/10 border-primary/20 text-primary",
                             booking.status === "cancelled" &&
@@ -304,7 +338,10 @@ export default function CalendarClient({
                             top: `${top}px`,
                             height: `${height}px`,
                           }}
-                          onClick={() => handleSlotClick(facility, start)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSlotClick(facility, start, booking);
+                          }}
                         >
                           <div className="truncate font-semibold">
                             {booking.user.name}
@@ -331,6 +368,9 @@ export default function CalendarClient({
           facilityType={selectedType}
           startTime={bookingModalData.startTime}
           currentUserId={userId}
+          bookingId={bookingModalData.bookingId}
+          initialDuration={bookingModalData.initialDuration}
+          initialParticipants={bookingModalData.initialParticipants}
           onSuccess={() => {
             // Refresh bookings handled by invalidation in modal
           }}
