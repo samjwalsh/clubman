@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import {
   subWeeks,
   startOfDay,
   endOfDay,
+  isSameDay,
 } from "date-fns";
 import { type RouterOutputs } from "@/trpc/react";
 import { cn } from "@/lib/utils";
@@ -49,9 +50,24 @@ export default function CalendarClient({
   userId: string;
 }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTypeId, setSelectedTypeId] = useState<string>(
-    facilityTypes[0]?.id ?? "",
-  );
+  const LOCAL_STORAGE_KEY = `clubman:lastFacilityType:${clubId}:${userId}`;
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  // On mount, restore last viewed facility type from localStorage
+  useEffect(() => {
+    const storedTypeId = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (storedTypeId && facilityTypes.some((t) => t.id === storedTypeId)) {
+      setSelectedTypeId(storedTypeId);
+    } else {
+      setSelectedTypeId(facilityTypes[0]?.id ?? "");
+    }
+  }, [facilityTypes, clubId, userId, LOCAL_STORAGE_KEY]);
+
+  // Whenever selectedTypeId changes, persist it
+  useEffect(() => {
+    if (selectedTypeId) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, selectedTypeId);
+    }
+  }, [selectedTypeId, LOCAL_STORAGE_KEY]);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingModalData, setBookingModalData] = useState<{
     facility: Facility;
@@ -84,6 +100,7 @@ export default function CalendarClient({
   const handleNextDay = () => setSelectedDate((d) => addDays(d, 1));
   const handlePreviousWeek = () => setSelectedDate((d) => subWeeks(d, 1));
   const handleNextWeek = () => setSelectedDate((d) => addWeeks(d, 1));
+  const handleToday = () => setSelectedDate(new Date());
 
   const handleSlotClick = (
     facility: Facility,
@@ -207,6 +224,13 @@ export default function CalendarClient({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            onClick={handleToday}
+            disabled={isSameDay(selectedDate, new Date())}
+          >
+            Today
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -221,7 +245,7 @@ export default function CalendarClient({
               <Button
                 variant="outline"
                 className={cn(
-                  "min-w-[200px] justify-center font-normal",
+                  "min-w-[180px] justify-center font-normal",
                   !selectedDate && "text-muted-foreground",
                 )}
               >
@@ -254,12 +278,12 @@ export default function CalendarClient({
       <div className="bg-background flex-1 overflow-auto rounded-md border shadow-sm">
         <div className={cn("flex flex-col")}>
           {/* Header Row */}
-          <div className="bg-background sticky top-0 z-20 flex border-b shadow-sm">
-            <div className="bg-muted/50 w-20 shrink-0 border-r p-2"></div>
+          <div className="bg-background w- sticky top-0 z-20 flex">
+            <div className="bg-muted/50 w-20 shrink-0 border-r border-b p-2"></div>
             {selectedType.facilities.map((facility) => (
               <div
                 key={facility.id}
-                className="bg-muted/50 min-w-[150px] flex-1 border-r p-3 text-center font-semibold last:border-r-0"
+                className="bg-muted/50 min-w-[150px] flex-1 border-r border-b p-3 text-center font-semibold last:border-r-0"
               >
                 {facility.name}
               </div>
@@ -302,6 +326,7 @@ export default function CalendarClient({
                   {bookings
                     ?.filter((b) => b.facilityId === facility.id)
                     .map((booking) => {
+                      if (booking.status === "cancelled") return;
                       const start = new Date(booking.startTime);
                       const end = new Date(booking.endTime);
 
@@ -324,11 +349,9 @@ export default function CalendarClient({
                         <div
                           key={booking.id}
                           className={cn(
-                            "absolute right-1 left-1 flex flex-wrap content-start gap-2 overflow-hidden rounded-md border p-2 text-xs shadow-sm transition-all hover:z-10",
+                            "absolute right-0 left-0 flex flex-wrap content-start gap-2 overflow-hidden rounded-md border p-2 text-xs shadow-sm transition-all hover:z-10",
                             booking.status === "booked" &&
                               "bg-primary/10 border-primary/20 text-primary",
-                            booking.status === "cancelled" &&
-                              "bg-destructive/10 border-destructive/20 text-destructive line-through opacity-50",
                             booking.type === "maintenance" &&
                               "border-orange-200 bg-orange-100 text-orange-800",
                             booking.type === "coaching_session" &&

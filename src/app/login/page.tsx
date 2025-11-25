@@ -72,6 +72,7 @@ export default function LoginPage() {
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
+                      autoFocus
                       id="email"
                       type="email"
                       placeholder="m@example.com"
@@ -86,6 +87,7 @@ export default function LoginPage() {
                       <a
                         href="#"
                         className="ml-auto text-sm underline-offset-4 hover:underline"
+                        tabIndex={1}
                       >
                         Forgot your password?
                       </a>
