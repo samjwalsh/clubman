@@ -204,7 +204,7 @@ export default function CalendarClient({
   const pixelsPerMinute = ROW_HEIGHT / interval;
 
   return (
-    <div className="flex h-full flex-col gap-4 p-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex flex-row flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -313,7 +313,7 @@ export default function CalendarClient({
                   key={facility.id}
                   className="relative min-w-[150px] flex-1 border-r last:border-r-0"
                 >
-                  {/* Grid Lines */}
+                  {/* Calendar Blocks */}
                   {timeSlots.map((slot) => (
                     <>
                       {bookings === undefined && (
@@ -326,7 +326,14 @@ export default function CalendarClient({
                       {bookings !== undefined && (
                         <div
                           key={slot.toISOString()}
-                          className="hover:bg-accent w-full cursor-pointer border-b transition-colors"
+                          className={cn(
+                            "w-full border-b transition-colors",
+                            isFacilityClosed(facility.id, slot)
+                              ? "cursor-not-allowed bg-gray-100 dark:bg-gray-800/50"
+                              : slot < new Date()
+                                ? "bg-muted/50 cursor-not-allowed"
+                                : "hover:bg-accent cursor-pointer",
+                          )}
                           style={{ height: ROW_HEIGHT }}
                           onClick={() => handleSlotClick(facility, slot)}
                         />
