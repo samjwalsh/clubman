@@ -39,7 +39,7 @@ export function FacilitiesManager({ clubId }: { clubId: string }) {
   if (isLoading) return <div>Loading...</div>;
 
   return (
-    <div className="grid h-[calc(100vh-10rem)] grid-cols-1 gap-6 lg:grid-cols-12">
+    <div className="grid h-[calc(100vh-10rem)] grid-cols-1 gap-2 lg:grid-cols-12">
       {/* Left Pane: Facility Types List */}
       <Card className="flex h-full flex-col lg:col-span-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

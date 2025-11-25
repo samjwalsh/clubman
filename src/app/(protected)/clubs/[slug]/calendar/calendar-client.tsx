@@ -335,7 +335,14 @@ export default function CalendarClient({
                                 : "hover:bg-accent cursor-pointer",
                           )}
                           style={{ height: ROW_HEIGHT }}
-                          onClick={() => handleSlotClick(facility, slot)}
+                          onClick={() => {
+                            if (
+                              isFacilityClosed(facility.id, slot) ||
+                              slot < new Date()
+                            )
+                              return;
+                            handleSlotClick(facility, slot);
+                          }}
                         />
                       )}
                     </>
