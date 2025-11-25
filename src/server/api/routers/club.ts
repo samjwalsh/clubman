@@ -118,4 +118,96 @@ export const clubRouter = createTRPCRouter({
                 role: m.role
             }));
         }),
+
+    getMembers: protectedProcedure
+        .input(z.object({
+            clubId: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const { clubId } = input;
+
+            const members = await ctx.db.query.membership.findMany({
+                where: eq(membership.clubId, clubId),
+                with: {
+                    user: true
+                }
+            });
+
+            return members.map(m => ({
+                id: m.id,
+                userId: m.userId,
+                name: m.user.name,
+                email: m.user.email,
+                image: m.user.image,
+                role: m.role,
+                status: m.status,
+                joinedAt: m.joinedAt,
+            }));
+        }),
+
+    updateMember: protectedProcedure
+        .input(z.object({
+            clubId: z.string(),
+            memberId: z.string(),
+            role: z.enum(["owner", "admin", "coach", "member"]).optional(),
+            status: z.enum(["active", "suspended", "pending"]).optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { clubId, memberId, role, status } = input;
+
+            // Check that the current user is an admin or owner of this club
+            const currentUserMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, clubId),
+                    eq(membership.userId, ctx.session.user.id)
+                ),
+            });
+
+            if (!currentUserMembership || !["owner", "admin"].includes(currentUserMembership.role)) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Only admins and owners can modify members",
+                });
+            }
+
+            // Get the target membership
+            const targetMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, clubId),
+                    eq(membership.id, memberId)
+                ),
+            });
+
+            if (!targetMembership) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Member not found",
+                });
+            }
+
+            // Prevent users from modifying their own role/status
+            if (targetMembership.userId === ctx.session.user.id) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "You cannot modify your own role or status",
+                });
+            }
+
+            // Build update object
+            const updates: { role?: typeof targetMembership.role; status?: typeof targetMembership.status } = {};
+            if (role !== undefined) updates.role = role;
+            if (status !== undefined) updates.status = status;
+
+            if (Object.keys(updates).length === 0) {
+                return targetMembership;
+            }
+
+            const [updated] = await ctx.db
+                .update(membership)
+                .set(updates)
+                .where(eq(membership.id, memberId))
+                .returning();
+
+            return updated;
+        }),
 });
