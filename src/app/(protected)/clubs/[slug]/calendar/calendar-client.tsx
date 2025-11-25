@@ -36,6 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type FacilityType = RouterOutputs["facility"]["getTypes"][number];
 type Facility = FacilityType["facilities"][number];
@@ -314,12 +315,23 @@ export default function CalendarClient({
                 >
                   {/* Grid Lines */}
                   {timeSlots.map((slot) => (
-                    <div
-                      key={slot.toISOString()}
-                      className="hover:bg-accent w-full cursor-pointer border-b transition-colors"
-                      style={{ height: ROW_HEIGHT }}
-                      onClick={() => handleSlotClick(facility, slot)}
-                    />
+                    <>
+                      {bookings === undefined && (
+                        <Skeleton
+                          key={slot.toISOString()}
+                          className="w-full rounded-none border-b transition-colors"
+                          style={{ height: ROW_HEIGHT }}
+                        />
+                      )}
+                      {bookings !== undefined && (
+                        <div
+                          key={slot.toISOString()}
+                          className="hover:bg-accent w-full cursor-pointer border-b transition-colors"
+                          style={{ height: ROW_HEIGHT }}
+                          onClick={() => handleSlotClick(facility, slot)}
+                        />
+                      )}
+                    </>
                   ))}
 
                   {/* Bookings */}
