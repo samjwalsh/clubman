@@ -68,8 +68,8 @@ export function TypeDetailsPane({
 
   return (
     <>
-      <CardHeader className="border-b pb-0">
-        <div className="mb-4 flex items-center justify-between">
+      <CardHeader>
+        <div className="mb-2 flex items-center justify-between">
           <div>
             <CardTitle>{type.name}</CardTitle>
           </div>
@@ -115,7 +115,6 @@ export function TypeDetailsPane({
             </Dialog>
           </div>
         </div>
-
         <div className="flex gap-4 border-b">
           <button
             onClick={() => setActiveTab("facilities")}
@@ -152,8 +151,7 @@ export function TypeDetailsPane({
           </button>
         </div>
       </CardHeader>
-
-      <CardContent className="flex-1 overflow-y-auto p-6">
+      <CardContent className="flex-1 overflow-y-auto">
         {activeTab === "facilities" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
