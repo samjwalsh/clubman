@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/sidebar";
 import { ClubSlugTracker } from "./club-slug-tracker";
 import { ModeToggle } from "@/components/mode-toggle";
+import { WidthToggle, WidthProvider } from "@/components/width-toggle";
+import { ContentContainer } from "@/components/content-container";
 
 export default async function ClubLayout({
   children,
@@ -17,18 +19,25 @@ export default async function ClubLayout({
   const clubs = await api.club.getAll();
 
   return (
-    <SidebarProvider>
-      <ClubSlugTracker />
-      <AppSidebar clubs={clubs} />
-      <SidebarInset className="flex min-w-0 flex-col">
-        <header className="flex h-12 w-full shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
+    <WidthProvider>
+      <SidebarProvider>
+        <ClubSlugTracker />
+        <AppSidebar clubs={clubs} />
+        <SidebarInset className="flex min-w-0 flex-col">
+          <header className="flex h-12 w-full shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <WidthToggle />
+              <ModeToggle />
+            </div>
+          </header>
+          <div className="flex-1 overflow-auto p-4">
+            <ContentContainer>{children}</ContentContainer>
           </div>
-          <ModeToggle />
-        </header>
-        <div className="border-2 p-4">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </WidthProvider>
   );
 }

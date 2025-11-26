@@ -11,10 +11,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type ContentWidth = "narrow" | "medium" | "wide" | "full";
+export type ContentWidth = "medium" | "wide" | "full";
 
 const widthLabels: Record<ContentWidth, string> = {
-  narrow: "Narrow",
   medium: "Medium",
   wide: "Wide",
   full: "Full Width",
@@ -22,7 +21,15 @@ const widthLabels: Record<ContentWidth, string> = {
 
 const STORAGE_KEY = "content-width";
 
-export function useContentWidth() {
+type WidthContextType = {
+  width: ContentWidth;
+  setWidth: (width: ContentWidth) => void;
+  mounted: boolean;
+};
+
+const WidthContext = React.createContext<WidthContextType | null>(null);
+
+export function WidthProvider({ children }: { children: React.ReactNode }) {
   const [width, setWidthState] = React.useState<ContentWidth>("wide");
   const [mounted, setMounted] = React.useState(false);
 
@@ -39,7 +46,19 @@ export function useContentWidth() {
     localStorage.setItem(STORAGE_KEY, newWidth);
   }, []);
 
-  return { width, setWidth, mounted };
+  return (
+    <WidthContext.Provider value={{ width, setWidth, mounted }}>
+      {children}
+    </WidthContext.Provider>
+  );
+}
+
+export function useContentWidth() {
+  const context = React.useContext(WidthContext);
+  if (!context) {
+    throw new Error("useContentWidth must be used within a WidthProvider");
+  }
+  return context;
 }
 
 export function WidthToggle() {
