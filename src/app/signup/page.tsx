@@ -24,7 +24,19 @@ import { GalleryVerticalEnd } from "lucide-react";
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackURL = searchParams.get("callbackURL") ?? "/";
+
+  // Check for intent or invite
+  const intent = searchParams.get("intent");
+  const hasInvite = searchParams.has("callbackURL");
+  const isCreatingClub = intent === "create_club";
+
+  // Determine effective callback URL
+  // If creating a club, force redirect to /create
+  // Otherwise use the provided callbackURL (from invite) or default to /
+  const callbackURL = isCreatingClub
+    ? "/create"
+    : (searchParams.get("callbackURL") ?? "/");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,6 +73,53 @@ export default function SignupPage() {
     setLoading(false);
   };
 
+  // RESTRICTION LOGIC:
+  // Only allow signup if they have an invite (callbackURL) or are creating a club
+  if (!hasInvite && !isCreatingClub) {
+    return (
+      <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <a
+            href="#"
+            className="flex items-center gap-2 self-center font-medium"
+          >
+            <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+              <GalleryVerticalEnd className="size-4" />
+            </div>
+            Club Manager
+          </a>
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl">Invite Only</CardTitle>
+              <CardDescription>
+                Signups are currently restricted to users with an invitation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <p className="text-muted-foreground text-center text-sm">
+                If you have an invite link, please use it to sign up. Otherwise,
+                you can create a new club to get started.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => router.push("/signup?intent=create_club")}
+              >
+                Create a New Club
+              </Button>
+              <div className="text-center text-sm">
+                Already have an account?{" "}
+                <a href="/login" className="underline">
+                  Sign in
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
@@ -73,12 +132,28 @@ export default function SignupPage() {
         <div className={cn("flex flex-col gap-6")}>
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Create your account</CardTitle>
+              <CardTitle className="text-xl">
+                {isCreatingClub ? "Create Club Account" : "Create your account"}
+              </CardTitle>
               <CardDescription>
-                Enter your email below to create your account
+                {isCreatingClub
+                  ? "Sign up to create and manage your club."
+                  : "Enter your email below to create your account"}
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {isCreatingClub && (
+                <div className="mb-6 rounded-md bg-blue-50 p-4 text-sm text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                  <p>
+                    <strong>Note:</strong> Only sign up here if you are a club
+                    owner creating a new club.
+                  </p>
+                  <p className="mt-2">
+                    If you are a member trying to join an existing club, please
+                    check your email for an invite link.
+                  </p>
+                </div>
+              )}
               <form onSubmit={handleSubmit}>
                 <FieldGroup>
                   <Field>
