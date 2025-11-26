@@ -1,7 +1,8 @@
 CREATE TYPE "public"."booking_status" AS ENUM('booked', 'attended', 'cancelled', 'no_show');--> statement-breakpoint
 CREATE TYPE "public"."booking_type" AS ENUM('user_booking', 'coaching_session', 'maintenance', 'block');--> statement-breakpoint
 CREATE TYPE "public"."day_of_week" AS ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday');--> statement-breakpoint
-CREATE TYPE "public"."membership_status" AS ENUM('active', 'suspended', 'pending');--> statement-breakpoint
+CREATE TYPE "public"."invitation_status" AS ENUM('pending', 'accepted');--> statement-breakpoint
+CREATE TYPE "public"."membership_status" AS ENUM('active', 'suspended');--> statement-breakpoint
 CREATE TYPE "public"."participant_status" AS ENUM('registered', 'waitlist', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('owner', 'admin', 'coach', 'member');--> statement-breakpoint
 CREATE TYPE "public"."rule_type" AS ENUM('max_duration', 'cancellation_window', 'guest_fee');--> statement-breakpoint
@@ -120,6 +121,18 @@ CREATE TABLE "facility_type" (
 	"booking_interval_minutes" integer DEFAULT 30 NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "invitation" (
+	"id" text PRIMARY KEY NOT NULL,
+	"club_id" text NOT NULL,
+	"email" text NOT NULL,
+	"role" "role" NOT NULL,
+	"token" text NOT NULL,
+	"inviter_id" text NOT NULL,
+	"status" "invitation_status" DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp NOT NULL,
+	CONSTRAINT "invitation_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
 CREATE TABLE "membership" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -201,6 +214,8 @@ ALTER TABLE "facility_closure" ADD CONSTRAINT "facility_closure_facility_id_faci
 ALTER TABLE "facility_opening_hours" ADD CONSTRAINT "facility_opening_hours_facility_type_id_facility_type_id_fk" FOREIGN KEY ("facility_type_id") REFERENCES "public"."facility_type"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "facility_opening_hours" ADD CONSTRAINT "facility_opening_hours_facility_id_facility_id_fk" FOREIGN KEY ("facility_id") REFERENCES "public"."facility"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "facility_type" ADD CONSTRAINT "facility_type_club_id_club_id_fk" FOREIGN KEY ("club_id") REFERENCES "public"."club"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_club_id_club_id_fk" FOREIGN KEY ("club_id") REFERENCES "public"."club"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "membership" ADD CONSTRAINT "membership_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "membership" ADD CONSTRAINT "membership_club_id_club_id_fk" FOREIGN KEY ("club_id") REFERENCES "public"."club"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

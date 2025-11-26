@@ -76,6 +76,7 @@ export const verification = pgTable("verification", {
 export const userRelations = relations(user, ({ many }) => ({
   account: many(account),
   session: many(session),
+  sentInvitations: many(invitation),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
@@ -91,7 +92,6 @@ export const roleEnum = pgEnum("role", ["owner", "admin", "coach", "member"]);
 export const membershipStatusEnum = pgEnum("membership_status", [
   "active",
   "suspended",
-  "pending",
 ]);
 export const bookingStatusEnum = pgEnum("booking_status", [
   "booked",
@@ -123,6 +123,10 @@ export const dayOfWeekEnum = pgEnum("day_of_week", [
   "friday",
   "saturday",
   "sunday",
+]);
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "pending",
+  "accepted",
 ]);
 
 // Tables
@@ -316,6 +320,23 @@ export const sessionParticipant = pgTable("session_participant", {
     .notNull(),
 });
 
+export const invitation = pgTable("invitation", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clubId: text("club_id")
+    .notNull()
+    .references(() => club.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: roleEnum("role").notNull(),
+  token: text("token").notNull().unique(),
+  inviterId: text("inviter_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: invitationStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 // Relations
 
 export const clubRelations = relations(club, ({ many }) => ({
@@ -326,6 +347,7 @@ export const clubRelations = relations(club, ({ many }) => ({
   bookingRules: many(bookingRule),
   coachingTemplates: many(coachingTemplate),
   coachingSessions: many(coachingSession),
+  invitations: many(invitation),
 }));
 
 export const membershipRelations = relations(membership, ({ one }) => ({
@@ -448,3 +470,8 @@ export const sessionParticipantRelations = relations(
     }),
   }),
 );
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  club: one(club, { fields: [invitation.clubId], references: [club.id] }),
+  inviter: one(user, { fields: [invitation.inviterId], references: [user.id] }),
+}));
