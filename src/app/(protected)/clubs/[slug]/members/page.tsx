@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { api } from "@/trpc/server";
 import { MembersTable } from "./_components/members-table";
+import Heading from "../_components/page-title";
 
 export default async function MembersPage({
   params,
@@ -16,13 +17,8 @@ export default async function MembersPage({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Members</h1>
-        <p className="text-muted-foreground">
-          Manage your club members and their roles.
-        </p>
-      </div>
+    <div>
+      <Heading title="Members" subtitle="Add and manage club members." />
       <MembersTable clubId={club.id} />
     </div>
   );
