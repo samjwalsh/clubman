@@ -18,7 +18,7 @@ export async function sendInvitationEmail({
 }: SendInvitationEmailProps) {
     const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
     // For testing purposes, override email if DEBUG_EMAIL is set
-    if (env.DEBUG_EMAIL) {
+    if (env.DEBUG_EMAIL && env.DEBUG_EMAIL.length > 0) {
         email = env.DEBUG_EMAIL;
     }
     try {
