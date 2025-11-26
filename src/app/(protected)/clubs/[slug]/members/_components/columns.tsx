@@ -26,12 +26,20 @@ export type Member = {
 
 export type ColumnMeta = {
   currentUserId: string;
+  currentUserRole?: Member["role"];
   onRoleChange: (memberId: string, role: Member["role"]) => void;
   onStatusChange: (memberId: string, status: Member["status"]) => void;
 };
 
 const roles = ["owner", "admin", "coach", "member"] as const;
 const statuses = ["active", "suspended"] as const;
+
+const roleHierarchy = {
+  owner: 3,
+  admin: 2,
+  coach: 1,
+  member: 0,
+};
 
 const roleColors: Record<Member["role"], string> = {
   owner:
@@ -116,7 +124,15 @@ export const columns: ColumnDef<Member>[] = [
       const meta = table.options.meta as ColumnMeta | undefined;
       const isCurrentUser = meta?.currentUserId === member.userId;
 
-      if (isCurrentUser || !meta) {
+      const currentRoleWeight =
+        roleHierarchy[meta?.currentUserRole ?? "member"];
+      const targetRoleWeight = roleHierarchy[member.role];
+      const canEdit =
+        !isCurrentUser &&
+        meta?.currentUserRole &&
+        currentRoleWeight > targetRoleWeight;
+
+      if (!canEdit || !meta) {
         return (
           <Badge variant="outline" className={roleColors[member.role]}>
             {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
@@ -137,13 +153,18 @@ export const columns: ColumnDef<Member>[] = [
             </Badge>
           </SelectTrigger>
           <SelectContent>
-            {roles.map((role) => (
-              <SelectItem key={role} value={role}>
-                <Badge variant="outline" className={roleColors[role]}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                </Badge>
-              </SelectItem>
-            ))}
+            {roles.map((role) => {
+              const roleWeight = roleHierarchy[role];
+              if (roleWeight >= currentRoleWeight) return null;
+
+              return (
+                <SelectItem key={role} value={role}>
+                  <Badge variant="outline" className={roleColors[role]}>
+                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                  </Badge>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       );
@@ -162,7 +183,15 @@ export const columns: ColumnDef<Member>[] = [
       const meta = table.options.meta as ColumnMeta | undefined;
       const isCurrentUser = meta?.currentUserId === member.userId;
 
-      if (isCurrentUser || !meta) {
+      const currentRoleWeight =
+        roleHierarchy[meta?.currentUserRole ?? "member"];
+      const targetRoleWeight = roleHierarchy[member.role];
+      const canEdit =
+        !isCurrentUser &&
+        meta?.currentUserRole &&
+        currentRoleWeight > targetRoleWeight;
+
+      if (!canEdit || !meta) {
         return (
           <Badge variant="outline" className={statusColors[member.status]}>
             {member.status.charAt(0).toUpperCase() + member.status.slice(1)}

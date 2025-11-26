@@ -64,12 +64,14 @@ export function InviteMemberModal({ clubId }: InviteMemberModalProps) {
     },
   });
 
+  const utils = api.useUtils();
+
   const inviteMember = api.club.inviteMember.useMutation({
     onSuccess: () => {
       setOpen(false);
       reset();
       toast.success("Invitation sent successfully");
-      // void utils.club.getInvitations.invalidate({ clubId }); // If we had a getInvitations query
+      void utils.club.getPendingInvites.invalidate({ clubId });
     },
     onError: (error) => {
       toast.error(error.message);

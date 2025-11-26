@@ -361,6 +361,33 @@ export const clubRouter = createTRPCRouter({
                 });
             }
 
+            const roleHierarchy = {
+                owner: 3,
+                admin: 2,
+                coach: 1,
+                member: 0,
+            };
+
+            const currentRoleWeight = roleHierarchy[currentUserMembership.role];
+            const targetRoleWeight = roleHierarchy[targetMembership.role];
+
+            if (targetRoleWeight >= currentRoleWeight) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "You cannot modify a member with a higher or equal role",
+                });
+            }
+
+            if (role) {
+                const newRoleWeight = roleHierarchy[role];
+                if (newRoleWeight >= currentRoleWeight) {
+                    throw new TRPCError({
+                        code: "FORBIDDEN",
+                        message: "You cannot promote a member to a role higher than or equal to your own",
+                    });
+                }
+            }
+
             // Build update object
             const updates: { role?: typeof targetMembership.role; status?: typeof targetMembership.status } = {};
             if (role !== undefined) updates.role = role;
@@ -377,5 +404,66 @@ export const clubRouter = createTRPCRouter({
                 .returning();
 
             return updated;
+        }),
+
+    getPendingInvites: protectedProcedure
+        .input(z.object({ clubId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            // Check permissions
+            const userMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, input.clubId),
+                    eq(membership.userId, ctx.session.user.id)
+                ),
+            });
+
+            if (!userMembership || !["owner", "admin"].includes(userMembership.role)) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Only admins and owners can view pending invites",
+                });
+            }
+
+            return await ctx.db.query.invitation.findMany({
+                where: and(
+                    eq(invitation.clubId, input.clubId),
+                    eq(invitation.status, "pending")
+                ),
+                orderBy: (invitation, { desc }) => [desc(invitation.createdAt)],
+            });
+        }),
+
+    revokeInvitation: protectedProcedure
+        .input(z.object({ invitationId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const invite = await ctx.db.query.invitation.findFirst({
+                where: eq(invitation.id, input.invitationId),
+            });
+
+            if (!invite) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Invitation not found",
+                });
+            }
+
+            // Check permissions
+            const userMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, invite.clubId),
+                    eq(membership.userId, ctx.session.user.id)
+                ),
+            });
+
+            if (!userMembership || !["owner", "admin"].includes(userMembership.role)) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Only admins and owners can revoke invites",
+                });
+            }
+
+            await ctx.db.delete(invitation).where(eq(invitation.id, input.invitationId));
+
+            return { success: true };
         }),
 });
