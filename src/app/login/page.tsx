@@ -52,7 +52,10 @@ function LoginPageSkeleton() {
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackURL = searchParams.get("callbackURL") ?? "/";
+  const callbackURLParam = searchParams.get("callbackURL");
+  const callbackURL = callbackURLParam ?? "/";
+  // Only pass callback to signup if it's a real invite URL
+  const hasRealCallback = callbackURLParam?.startsWith("/invite/") ?? false;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -139,7 +142,11 @@ function LoginPageContent() {
                     <FieldDescription className="text-center">
                       Don&apos;t have an account?{" "}
                       <a
-                        href={`/signup?callbackURL=${encodeURIComponent(callbackURL)}`}
+                        href={
+                          hasRealCallback
+                            ? `/signup?callbackURL=${encodeURIComponent(callbackURL)}`
+                            : "/signup"
+                        }
                       >
                         Sign up
                       </a>

@@ -55,15 +55,15 @@ function SignupPageContent() {
 
   // Check for intent or invite
   const intent = searchParams.get("intent");
-  const hasInvite = searchParams.has("callbackURL");
+  const callbackURLParam = searchParams.get("callbackURL");
+  // Only consider it an invite if the callback URL points to /invite/
+  const hasInvite = callbackURLParam?.startsWith("/invite/") ?? false;
   const isCreatingClub = intent === "create_club";
 
   // Determine effective callback URL
   // If creating a club, force redirect to /create
   // Otherwise use the provided callbackURL (from invite) or default to /
-  const callbackURL = isCreatingClub
-    ? "/create"
-    : (searchParams.get("callbackURL") ?? "/");
+  const callbackURL = isCreatingClub ? "/create" : (callbackURLParam ?? "/");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -243,7 +243,11 @@ function SignupPageContent() {
                     <FieldDescription className="text-center">
                       Already have an account?{" "}
                       <a
-                        href={`/login?callbackURL=${encodeURIComponent(callbackURL)}`}
+                        href={
+                          hasInvite
+                            ? `/login?callbackURL=${encodeURIComponent(callbackURL)}`
+                            : "/login"
+                        }
                       >
                         Sign in
                       </a>

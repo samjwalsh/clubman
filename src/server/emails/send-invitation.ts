@@ -18,13 +18,16 @@ export async function sendInvitationEmail({
 }: SendInvitationEmailProps) {
     const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
     // For testing purposes, override email if DEBUG_EMAIL is set
-    if (env.DEBUG_EMAIL && env.DEBUG_EMAIL.length > 0) {
-        email = env.DEBUG_EMAIL;
+    let to = email;
+    let from = env.RESEND_EMAIL_FROM;
+    if (env.DEBUG_EMAIL) {
+        to = env.DEBUG_EMAIL;
+        from = "Club Manager <onboarding@resend.dev>"
     }
     try {
         await resend.emails.send({
-            from: "Club Manager <onboarding@resend.dev>", // Update this with your verified domain
-            to: email,
+            from, // Update this with your verified domain
+            to,
             subject: `You've been invited to join ${clubName} on Club Manager`,
             html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
