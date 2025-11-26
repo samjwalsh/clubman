@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function InvitePage({ params }: { params: { token: string } }) {
+export default function InvitePage() {
+  const params = useParams();
+  const token = params.token as string;
   const router = useRouter();
   const { data: session, isPending: isSessionLoading } =
     authClient.useSession();
@@ -26,7 +28,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
     data: invite,
     isLoading: isInviteLoading,
     error: inviteError,
-  } = api.club.getInvitation.useQuery({ token: params.token });
+  } = api.club.getInvitation.useQuery({ token });
 
   // Mutation to accept invite
   const acceptInvite = api.club.acceptInvite.useMutation({
@@ -50,21 +52,21 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       }
 
       setIsAccepting(true);
-      acceptInvite.mutate({ token: params.token });
+      acceptInvite.mutate({ token });
     }
-  }, [session, invite, isAccepting, acceptInvite, params.token]);
+  }, [session, invite, isAccepting, acceptInvite, token]);
 
   const handleLogin = () => {
-    router.push(`/login?callbackURL=/invite/${params.token}`);
+    router.push(`/login?callbackURL=/invite/${token}`);
   };
 
   const handleSignup = () => {
-    router.push(`/signup?callbackURL=/invite/${params.token}`);
+    router.push(`/signup?callbackURL=/invite/${token}`);
   };
 
   const handleManualAccept = () => {
     setIsAccepting(true);
-    acceptInvite.mutate({ token: params.token });
+    acceptInvite.mutate({ token });
   };
 
   if (isSessionLoading || isInviteLoading) {

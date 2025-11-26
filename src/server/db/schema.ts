@@ -258,24 +258,6 @@ export const bookingRule = pgTable("booking_rule", {
   value: jsonb("value").notNull(),
 });
 
-export const waitlist = pgTable("waitlist", {
-  id: text("id").primaryKey(),
-  clubId: text("club_id")
-    .notNull()
-    .references(() => club.id, { onDelete: "cascade" }),
-  facilityId: text("facility_id")
-    .notNull()
-    .references(() => facility.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-});
-
 export const coachingTemplate = pgTable("coaching_template", {
   id: text("id").primaryKey(),
   clubId: text("club_id")
@@ -370,7 +352,6 @@ export const facilityRelations = relations(facility, ({ one, many }) => ({
     references: [facilityType.id],
   }),
   bookings: many(booking),
-  waitlist: many(waitlist),
   openingHours: many(facilityOpeningHours),
   closures: many(facilityClosure),
 }));
@@ -425,15 +406,6 @@ export const bookingRuleRelations = relations(bookingRule, ({ one }) => ({
     fields: [bookingRule.facilityTypeId],
     references: [facilityType.id],
   }),
-}));
-
-export const waitlistRelations = relations(waitlist, ({ one }) => ({
-  club: one(club, { fields: [waitlist.clubId], references: [club.id] }),
-  facility: one(facility, {
-    fields: [waitlist.facilityId],
-    references: [facility.id],
-  }),
-  user: one(user, { fields: [waitlist.userId], references: [user.id] }),
 }));
 
 export const coachingTemplateRelations = relations(

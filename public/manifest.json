@@ -2,7 +2,7 @@
   "name": "Clubman",
   "short_name": "Clubman",
   "description": "Manage your club with ease.",
-  "start_url": "/",
+  "start_url": "/clubs",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
