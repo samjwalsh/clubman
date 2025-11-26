@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 
-import { AppSidebar } from "@/app/(protected)/clubs/_components/app-sidebar";
+import { AppSidebar } from "./_components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,

@@ -9,8 +9,9 @@ import {
   PersonStanding,
 } from "lucide-react";
 
-import { NavUser } from "@/app/(protected)/clubs/_components/nav-user";
-import { ClubSwitcher } from "@/app/(protected)/clubs/_components/club-switcher";
+import { NavUser } from "./nav-user";
+import { ClubSwitcher } from "./club-switcher";
+
 import {
   Sidebar,
   SidebarContent,
