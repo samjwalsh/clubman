@@ -4,7 +4,7 @@ CREATE TYPE "public"."day_of_week" AS ENUM('monday', 'tuesday', 'wednesday', 'th
 CREATE TYPE "public"."membership_status" AS ENUM('active', 'suspended', 'pending');--> statement-breakpoint
 CREATE TYPE "public"."participant_status" AS ENUM('registered', 'waitlist', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('owner', 'admin', 'coach', 'member');--> statement-breakpoint
-CREATE TYPE "public"."rule_type" AS ENUM('opening_hours', 'max_duration', 'cancellation_window', 'guest_fee');--> statement-breakpoint
+CREATE TYPE "public"."rule_type" AS ENUM('max_duration', 'cancellation_window', 'guest_fee');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"account_id" text NOT NULL,

@@ -1,5 +1,5 @@
 {
-  "id": "4457284d-7ecf-43c3-b019-c640e1145b8d",
+  "id": "e53d5844-4b0d-4329-84b2-ece4c82ad179",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1439,7 +1439,6 @@
       "name": "rule_type",
       "schema": "public",
       "values": [
-        "opening_hours",
         "max_duration",
         "cancellation_window",
         "guest_fee"
