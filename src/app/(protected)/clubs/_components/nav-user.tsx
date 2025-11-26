@@ -5,9 +5,12 @@ import {
   Bell,
   ChevronsUpDown,
   CreditCard,
+  Link as LinkIcon,
   LogOut,
   Sparkles,
 } from "lucide-react";
+
+import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -95,10 +98,12 @@ export function NavUser({
                 <CreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
+              <Link href="/home">
+                <DropdownMenuItem>
+                  <LinkIcon />
+                  HomePage
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
