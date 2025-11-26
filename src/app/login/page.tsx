@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/server/better-auth/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ import { GalleryVerticalEnd } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackURL = searchParams.get("callbackURL") ?? "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,13 +38,14 @@ export default function LoginPage() {
     await authClient.signIn.email({
       email,
       password,
+      callbackURL,
       fetchOptions: {
         onError: (ctx) => {
           setError(ctx.error.message);
           setLoading(false);
         },
         onSuccess: () => {
-          router.push("/");
+          router.push(callbackURL);
         },
       },
     });
@@ -106,7 +109,12 @@ export default function LoginPage() {
                       {loading ? "Logging in..." : "Login"}
                     </Button>
                     <FieldDescription className="text-center">
-                      Don&apos;t have an account? <a href="/signup">Sign up</a>
+                      Don&apos;t have an account?{" "}
+                      <a
+                        href={`/signup?callbackURL=${encodeURIComponent(callbackURL)}`}
+                      >
+                        Sign up
+                      </a>
                     </FieldDescription>
                   </Field>
                 </FieldGroup>

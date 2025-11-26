@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,13 +17,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { DataTable } from "./data-table";
 import { columns, type Member, type ColumnMeta } from "./columns";
+import { InviteMemberModal } from "./invite-member-modal";
 
 interface MembersTableProps {
   clubId: string;
 }
 
 const roles = ["owner", "admin", "coach", "member"] as const;
-const statuses = ["active", "suspended", "pending"] as const;
+const statuses = ["active", "suspended"] as const;
 
 export function MembersTable({ clubId }: MembersTableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
@@ -101,10 +101,7 @@ export function MembersTable({ clubId }: MembersTableProps) {
             className="pl-9"
           />
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Member
-        </Button>
+        <InviteMemberModal clubId={clubId} />
       </div>
 
       {/* Filters */}

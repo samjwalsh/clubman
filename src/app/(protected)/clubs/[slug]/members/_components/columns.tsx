@@ -20,7 +20,7 @@ export type Member = {
   email: string;
   image: string | null;
   role: "owner" | "admin" | "coach" | "member";
-  status: "active" | "suspended" | "pending";
+  status: "active" | "suspended";
   joinedAt: Date;
 };
 
@@ -31,7 +31,7 @@ export type ColumnMeta = {
 };
 
 const roles = ["owner", "admin", "coach", "member"] as const;
-const statuses = ["active", "suspended", "pending"] as const;
+const statuses = ["active", "suspended"] as const;
 
 const roleColors: Record<Member["role"], string> = {
   owner:
@@ -44,8 +44,6 @@ const roleColors: Record<Member["role"], string> = {
 const statusColors: Record<Member["status"], string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   suspended: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-  pending:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
 };
 
 function SortableHeader({

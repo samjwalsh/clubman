@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { club, membership, user } from "@/server/db/schema";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
+import { club, membership, user, invitation } from "@/server/db/schema";
 import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { sendInvitationEmail } from "@/server/emails/send-invitation";
 
 export const clubRouter = createTRPCRouter({
     create: protectedProcedure
@@ -119,6 +120,173 @@ export const clubRouter = createTRPCRouter({
             }));
         }),
 
+    inviteMember: protectedProcedure
+        .input(
+            z.object({
+                clubId: z.string(),
+                email: z.string().email(),
+                role: z.enum(["admin", "coach", "member"]),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            // Check if user is admin or owner of the club
+            const userMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, input.clubId),
+                    eq(membership.userId, ctx.session.user.id),
+                ),
+            });
+
+            if (
+                !userMembership ||
+                (userMembership.role !== "owner" && userMembership.role !== "admin")
+            ) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Only admins and owners can invite members",
+                });
+            }
+
+            // Check if user is already a member
+            const existingUser = await ctx.db.query.user.findFirst({
+                where: eq(user.email, input.email),
+            });
+
+            if (existingUser) {
+                const existingMembership = await ctx.db.query.membership.findFirst({
+                    where: and(
+                        eq(membership.clubId, input.clubId),
+                        eq(membership.userId, existingUser.id),
+                    ),
+                });
+
+                if (existingMembership) {
+                    throw new TRPCError({
+                        code: "CONFLICT",
+                        message: "User is already a member of this club",
+                    });
+                }
+            }
+
+            // Create invitation
+            const token = randomUUID();
+            await ctx.db.insert(invitation).values({
+                clubId: input.clubId,
+                email: input.email,
+                role: input.role,
+                inviterId: ctx.session.user.id,
+                token,
+            });
+
+            // Get club name for email
+            const clubData = await ctx.db.query.club.findFirst({
+                where: eq(club.id, input.clubId),
+                columns: { name: true },
+            });
+
+            if (clubData) {
+                await sendInvitationEmail({
+                    email: input.email,
+                    token,
+                    clubName: clubData.name,
+                    inviterName: ctx.session.user.name ?? "A club admin",
+                });
+            }
+
+            return { success: true };
+        }),
+
+    getInvitation: publicProcedure
+        .input(z.object({ token: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const invite = await ctx.db.query.invitation.findFirst({
+                where: eq(invitation.token, input.token),
+                with: {
+                    club: true,
+                    inviter: true,
+                },
+            });
+
+            if (!invite) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Invitation not found",
+                });
+            }
+
+            if (invite.status === "accepted") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Invitation already accepted",
+                });
+            }
+
+            return invite;
+        }),
+
+    acceptInvite: protectedProcedure
+        .input(z.object({ token: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const invite = await ctx.db.query.invitation.findFirst({
+                where: eq(invitation.token, input.token),
+            });
+
+            if (!invite) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Invitation not found",
+                });
+            }
+
+            if (invite.status === "accepted") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Invitation already accepted",
+                });
+            }
+
+            // Check if user is already a member
+            const existingMembership = await ctx.db.query.membership.findFirst({
+                where: and(
+                    eq(membership.clubId, invite.clubId),
+                    eq(membership.userId, ctx.session.user.id),
+                ),
+            });
+
+            if (existingMembership) {
+                // Just mark invite as accepted if they are already a member
+                await ctx.db
+                    .update(invitation)
+                    .set({ status: "accepted" })
+                    .where(eq(invitation.id, invite.id));
+
+                const clubData = await ctx.db.query.club.findFirst({
+                    where: eq(club.id, invite.clubId),
+                });
+
+                return { slug: clubData?.slug };
+            }
+
+            // Create membership
+            await ctx.db.insert(membership).values({
+                clubId: invite.clubId,
+                userId: ctx.session.user.id,
+                role: invite.role,
+            });
+
+            // Update invitation status
+            await ctx.db
+                .update(invitation)
+                .set({ status: "accepted" })
+                .where(eq(invitation.id, invite.id));
+
+            const clubData = await ctx.db.query.club.findFirst({
+                where: eq(club.id, invite.clubId),
+            });
+
+            return { slug: clubData?.slug };
+        }),
+
     getMembers: protectedProcedure
         .input(z.object({
             clubId: z.string(),
@@ -150,7 +318,7 @@ export const clubRouter = createTRPCRouter({
             clubId: z.string(),
             memberId: z.string(),
             role: z.enum(["owner", "admin", "coach", "member"]).optional(),
-            status: z.enum(["active", "suspended", "pending"]).optional(),
+            status: z.enum(["active", "suspended"]).optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const { clubId, memberId, role, status } = input;
